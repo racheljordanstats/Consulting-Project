@@ -1,0 +1,200 @@
+---
+title: "Report on Determining a Resource-Efficient Model for Residential Real Estate Valuation"
+author: "Charles Hwang"
+date: "12/16/2022"
+output: pdf_document
+---
+# Introduction
+
+
+
+# Conclusion
+
+
+
+# Contributions
+
+
+
+# Appendix
+
+## EDA
+
+```{r EDA}
+rm(list=ls())
+load("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/consulting_data.RData")
+load("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/location_data.RData")
+library(sf)
+xy<-"https://milwaukeemaps.milwaukee.gov/arcgis/rest/services/assessor/assessor/MapServer/0/query?where=NBHD%3E%3D0040&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&having=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnDistinctValues=false&resultOffset=&resultRecordCount=&queryByDistance=&returnExtentOnly=false&datumTransformation=&parameterValues=&rangeValues=&quantizationParameters=&featureEncoding=esriDefault&f=geojson"
+m<-st_as_sf(st_read(xy))
+s1<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/SFYI_Codes1.csv")
+s1$Base.Price<-as.numeric(s1$Base.Price)
+s1$UOM.Code[which(s1$UOM.Code=="")]<-NA
+s1$UOM.Code<-as.factor(s1$UOM.Code)
+#u<-c("AC - Acreage","FF - Front Feet","ROOM - Rooms","APT - Apartment Unit","HTL - Hotel Unit","BED - Nursing Home Beds","GAL - Gallon","BBL - Barrel","CUFT - Cubic Feet","PERS - Person","TON - Ton","LBS - Pounds","SITE - Site","BedRoom - BedRooms","Seat - Seat")
+#s1$UOM.Code<-factor(s1$UOM.Code,c(levels(s1$UOM.Code),u))
+s1$Attached[which(s1$Attached=="")]<-NA
+s1$Attached<-as.factor(s1$Attached)
+s1$Attached<-factor(s1$Attached,c(levels(s1$Attached),"2 - Main"))
+s2<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/SFYI_Codes2.csv")
+s2$Full.Description[which(s2$Full.Description=="")]<-NA
+s3<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/SFYI_Codes3.csv")
+s4<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/SFYI_Codes4.csv")
+library(tidyr)
+property_values<-pivot_wider(property_values,names_from=YearID,values_from=TotalAssessedValue,names_prefix="TAV",names_sort=TRUE)
+property_values<-property_values[,-6]
+residential_data$BldType[which(residential_data$BldType=="")]<-NA
+#residential_data$BldType<-as.factor(residential_data$BldType)
+r<-c("EX","VG","GD","AV","FR","PR","VP","UN")
+residential_data$PhysicalCondition<-factor(residential_data$PhysicalCondition,levels=r,labels=length(r):1)
+residential_data$PhysicalCondition[which(residential_data$PhysicalCondition==" ")]<-NA
+residential_data$xrImprovedStatusID<-as.factor(residential_data$xrImprovedStatusID)
+residential_data$Neighborhood[which(residential_data$Neighborhood=="34829")]<-NA
+#residential_data$Neighborhood<-as.factor(residential_data$Neighborhood)
+residential_data$Quality[which(residential_data$Quality==" ")]<-NA
+#residential_data$Quality[which(residential_data$Quality=="M&S 2")]<-NA
+q<-c("AA+","AA","AA-","A+","A","A-","B+","B","B-","C+","C","C-","D+","D","D-","E+","E","E-")
+residential_data$Quality<-factor(residential_data$Quality,levels=q,labels=length(q):1)
+residential_data$YearBuilt[which(residential_data$YearBuilt==0)]<-NA
+residential_data$FullBath[is.na(residential_data$FullBath)]<-0
+residential_data$RatingBath[which(residential_data$RatingBath=="")]<-NA
+residential_data$RatingBath<-factor(residential_data$RatingBath,levels=r,labels=length(r):1)
+residential_data$HalfBath[is.na(residential_data$HalfBath)]<-0
+residential_data$RatingHalfBath[which(residential_data$RatingHalfBath=="")]<-NA
+residential_data$RatingHalfBath<-factor(residential_data$RatingHalfBath,levels=r,labels=length(r):1)
+residential_data$Kitchen[is.na(residential_data$Kitchen)]<-0
+residential_data$RatingKitchen[which(residential_data$RatingKitchen=="")]<-NA
+residential_data$RatingKitchen<-factor(residential_data$RatingKitchen,levels=r,labels=length(r):1)
+residential_data$PercentAirConditioned[which(residential_data$PercentAirConditioned==1)]<-100
+residential_data$PercentAirConditioned[which(residential_data$PercentAirConditioned==200)]<-100
+residential_data$PrimaryWall[which(residential_data$PrimaryWall=="")]<-NA
+#residential_data$PrimaryWall<-as.factor(residential_data$PrimaryWall)
+residential_data$TotalFinishedArea[which(residential_data$TotalFinishedArea==0)]<-NA
+residential_data$TotalFinishedArea[which(residential_data$TotalFinishedArea==1338.01204)]<-1338
+#residential_data$LandSF[which(residential_data$LandSF==0)]<-residential_data$TotalFinishedArea[which(residential_data$LandSF==0)]
+#residential_data[which(residential_data$TotalFinishedArea>residential_data$LandSF),]
+sales_data$BldType[which(sales_data$BldType=="")]<-NA
+#sales_data$BldType<-as.factor(sales_data$BldType)
+sales_data$PhysicalCondition[which(sales_data$PhysicalCondition==" ")]<-NA
+sales_data$PhysicalCondition<-factor(sales_data$PhysicalCondition,levels=r,labels=length(r):1)
+sales_data$xrImprovedStatusID<-as.factor(sales_data$xrImprovedStatusID)
+#sales_data$Neighborhood<-as.factor(sales_data$Neighborhood)
+sales_data$Quality[which(sales_data$Quality=="")]<-NA
+sales_data$Quality[which(sales_data$Quality=="M&S 2")]<-NA
+sales_data$Quality<-factor(sales_data$Quality,levels=q,labels=length(q):1)
+sales_data$YearBuilt[which(sales_data$YearBuilt==0)]<-NA
+sales_data$FullBath[is.na(sales_data$FullBath)]<-0
+sales_data$RatingBath[which(sales_data$RatingBath=="")]<-NA
+sales_data$RatingBath<-factor(sales_data$RatingBath,levels=r,labels=length(r):1)
+sales_data$HalfBath[is.na(sales_data$HalfBath)]<-0
+sales_data$RatingHalfBath[which(sales_data$RatingHalfBath=="")]<-NA
+sales_data$RatingHalfBath<-factor(sales_data$RatingHalfBath,levels=r,labels=length(r):1)
+sales_data$Kitchen[is.na(sales_data$Kitchen)]<-0
+sales_data$RatingKitchen[which(sales_data$RatingKitchen=="")]<-NA
+sales_data$RatingKitchen<-factor(sales_data$RatingKitchen,levels=r,labels=length(r):1)
+sales_data$PercentAirConditioned[which(sales_data$PercentAirConditioned==200)]<-100
+sales_data$PrimaryWall[which(sales_data$PrimaryWall=="")]<-NA
+#sales_data$PrimaryWall<-as.factor(sales_data$PrimaryWall)
+sales_data$TotalFinishedArea[which(sales_data$TotalFinishedArea==1338.01204)]<-1338
+library(zoo)
+sales_data$SaleDate<-as.Date(sales_data$SaleDate)
+sfyi_data$Sfyi[which(sfyi_data$Sfyi=="")]<-NA
+sfyi_data$SfyiQuality[which(sfyi_data$SfyiQuality=="")]<-NA
+sfyi_data$SfyiQuality[which(sfyi_data$SfyiQuality=="M&S 1.5")]<-NA
+sfyi_data$SfyiQuality<-factor(sfyi_data$SfyiQuality,levels=q,labels=length(q):1)
+sfyi_data$SfyiCondition[which(sfyi_data$SfyiCondition==" ")]<-NA
+sfyi_data$SfyiCondition<-factor(sfyi_data$SfyiCondition,levels=r,labels=length(r):1)
+sfyi_data$ManualDescription[which(sfyi_data$ManualDescription=="")]<-NA
+sfyi_data$ManualDescription[which(sfyi_data$ManualDescription==" ")]<-NA
+location_data$XCoordinate<-as.numeric(location_data$XCoordinate)
+location_data$YCoordinate<-as.numeric(location_data$YCoordinate)
+location_data$Neighborhood[which(location_data$Neighborhood=="34829")]<-NA
+location_data[which(is.na(location_data$NeighborhoodCluster)),"Neighborhood"]<-"0040"
+location_data[which(is.na(location_data$NeighborhoodCluster)),"NeighborhoodCluster"]<-"1"
+location_data$NeighborhoodCluster<-factor(location_data$NeighborhoodCluster,labels=1:16)
+location_data$GEO_TRACT[which(location_data$GEO_TRACT==0)]<-NA
+
+residential_data<-residential_data[residential_data$ParcelID!="3480765000",]
+residential_data<-residential_data[residential_data$xrImprovedStatusID==2,]
+residential_data$AC[residential_data$PercentAirConditioned==100]<-2
+residential_data$AC[residential_data$PercentAirConditioned==0]<-0
+residential_data$AC[is.na(residential_data$AC)]<-1
+residential_data$AC<-as.factor(residential_data$AC)
+sales_data<-sales_data[sales_data$xrImprovedStatusID==2,]
+sales_data$AC[sales_data$PercentAirConditioned==100]<-2
+sales_data$AC[sales_data$PercentAirConditioned==0]<-0
+sales_data$AC[is.na(sales_data$AC)]<-1
+sales_data$AC<-as.factor(sales_data$AC)
+library(dplyr)
+library(tidyverse)
+sales_data<-sales_data %>%
+  group_by(ParcelID) %>%
+  mutate(LastSaleDate=max(SaleDate)) %>%
+  ungroup() %>%
+  filter(SaleDate==LastSaleDate)
+ss<-format(as.yearqtr(as.yearmon(sales_data$LastSaleDate,"%m-%d-%Y")),"%q")
+sales_data$SeasonSold<-factor(ss,levels=1:4,labels=c("winter","spring","summer","fall"))
+sales_data<-sales_data[sales_data$SoldAsVacantFlag==FALSE,]
+
+residential_data<-residential_data %>% inner_join(property_values,by=c("ParcelID"="ParcelID"))
+residential_data<-residential_data %>% inner_join(location_data,by=c("ParcelID"="ParcelID"))
+residential_data$Neighborhood<-residential_data$Neighborhood.x
+c<-c("PropertyID","ParcelID","BldType","PhysicalCondition","Neighborhood","NeighborhoodCluster","Quality","YearBuilt","FullBath","RatingBath","HalfBath","RatingHalfBath","Kitchen","RatingKitchen","AC","PrimaryWall","TotalFinishedArea","LandSF","TAV2019","TAV2020","TAV2021","XCoordinate","YCoordinate","GEO_TRACT")
+residential_data<-residential_data[,c]
+sales_data<-sales_data %>% inner_join(property_values,by=c("ParcelID"="ParcelID"))
+sales_data<-sales_data %>% inner_join(location_data,by=c("ParcelID"="ParcelID"))
+sales_data$Neighborhood<-sales_data$Neighborhood.x
+sales_data<-sales_data[,c(c,"SalePrice","LastSaleDate","SeasonSold")]
+
+sfyi_data<-sfyi_data %>% inner_join(s1,by=c("Sfyi"="SFYI"))
+```
+
+## Workspace
+
+```{r Workspace}
+# Notes
+# * Sales date - one column for the season of each sale ("summer 2019", "fall 2019", etc.)
+# * Use latest sale instead of all sales
+# * Two sales have dates in the future
+#sort(sales_data$LastSaleDate,decreasing=TRUE)
+# * 
+
+rd<-merge(rd,sfyi_data)
+sd<-merge(sd,sfyi_data)
+rd<-merge(rd,p)
+sd<-merge(sd,p)
+rd
+sd
+
+rd[rd$ParcelID=="0341227000",]
+
+d<-sort(unique(c(which(duplicated(sales_data$ParcelID)),which(duplicated(sales_data$ParcelID))-1)))
+sales_data[d,]
+sales_data[sales_data$ParcelID=="0840170000",]
+
+sfyi_data[sort(unique(c(which(duplicated(sfyi_data$ParcelID)),which(duplicated(sfyi_data$ParcelID))-1))),]
+sort(table(sfyi_data$ParcelID),decreasing=TRUE)
+sfyi_data[sfyi_data$ParcelID==6909863122,]
+
+
+
+rm(c,d,q,r,ss,u,xy)
+```
+
+## Models
+
+```{r Models}
+
+```
+
+## Map of Milwaukee County Real Estate
+
+```{r Map of Milwaukee County Real Estate, warning=FALSE}
+library(ggplot2)
+library(ggrepel)
+ggplot(map_data("county","wisconsin,milwaukee"),aes(long,lat,col=location_data$NeighborhoodCluster))+
+  geom_polygon(aes(long,lat,group=group),fill="white",color="black")+
+  coord_fixed(1.5)+
+  labs(color="Neighborhood Cluster",x="Longitude (in degrees)",y="Latitude (in degrees)",title="Milwaukee Co. Real Estate")+
+  geom_point(data=data.frame(long=location_data$XCoordinate,lat=location_data$YCoordinate,stringsAsFactors=FALSE),aes(long,lat),size=0.5)
+```

@@ -1,0 +1,67 @@
+---
+title: "Design Project"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#merge data
+require(tidyverse)
+
+#widen property values data
+wider_propvals <- pivot_wider(property_values, names_from = YearID, values_from = TotalAssessedValue) 
+
+#widen special features data -- don't need to do this R will factor it for you
+wider_sfyi <- sfyi_data %>% 
+  mutate(dummy=1) %>%
+  spread(key=Sfyi,value=dummy, fill=0) 
+
+unique_sp_features <- unique(sfyi_data$Sfyi)
+unique_prop_id <- unique(sfyi_data$PropertyID)
+
+#change blanks to NA
+wider_sfyi <- wider_sfyi %>% mutate_all(na_if,"")
+
+wider_sfyi_2 <- sfyi_data %>% 
+  pivot_wider(names_from= c(Sfyi,SfyiQuality,SfyiCondition),values_from = SfyiQuantity,values_fn=list) 
+
+#wider_sfyi_2 <- data.frame()
+
+#wider sfyi attempt 2
+#for (i in unique_prop_id) {
+    
+   # for (j in unique_sp_features) {
+     # sfyi <- rep(i, nrow(length(unique_prop_id)))   # Create new column
+   #   wider_sfyi_2[ , ncol(wider_sfyi_2) + 1] <- sfyi       # Append new column
+    #  colnames(wider_sfyi_2)[ncol(data)] <- paste0("sfyi", j) #change column name
+ # }
+#}
+
+ # wider_sfyi_2 <- sfyi_data %>%
+ #  group_by(PropertyID) %>%
+ #  mutate(SfyiID = paste0("Sfyi", 1:n()),
+ #         SfyiQualityID = paste0("SfyiQuality", 1:n()),
+ #         SfyiQuantityID = paste0("SfyiQuantity", 1:n()),
+ #         SfyiConditionID = paste0("SfyiCondition", 1:n()),
+ #         ManualDescriptionID = paste0("ManualDescription", 1:n())) %>%
+ #  ungroup() %>%
+ #  pivot_wider(names_from = SfyiID, values_from = Sfyi) %>%
+ #  pivot_wider(names_from = SfyiQualityID, values_from = SfyiQuality) %>%
+ #  pivot_wider(names_from = SfyiQuantityID, values_from = SfyiQuantity) %>% 
+ #  pivot_wider(names_from = SfyiConditionID, values_from = SfyiCondition) %>%
+ #  pivot_wider(names_from = ManualDescriptionID, values_from = ManualDescription)
+
+require(stringr)
+table(str_count(sfyi_data$ManualDescription,"SLAB"))
+
+require(tidyverse)
+```
+
+loop through prop ids and check if it has special features. 0 if missing 1 if not. outside loop = property id
+
+for i in uniquids for j in uniquefeat pull out only special features related to property i does it have feature j? j+1? --\> create a row that is property id and a bunch of 0's and 1's cbind that shit!

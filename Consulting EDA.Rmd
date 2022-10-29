@@ -1,0 +1,270 @@
+---
+title: "Design EDA"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Join data (minus special features)
+
+```{r}
+require(tidyverse)
+initial_join <- sales_data %>% 
+  inner_join(wider_propvals,by=c("ParcelID"="ParcelID"))
+```
+
+Data cleaning
+
+```{r}
+#save as dates
+initial_join$SaleDate <- as.Date(initial_join$SaleDate)
+
+require(zoo)
+
+#one property per row, property identified by parcelID. only last sale date included.
+eda_data <- initial_join %>% 
+  group_by(ParcelID) %>% 
+  mutate(LastSaleDate=max(SaleDate)) %>% 
+  ungroup() %>% 
+  filter(SaleDate == LastSaleDate) 
+
+#add seasonsold as a variable
+yq <- as.yearqtr(as.yearmon(eda_data$LastSaleDate,"%m-%d-%Y"))
+eda_data$SeasonSold <- factor(format(yq,"%q"),levels=1:4,
+                        labels = c("winter","spring","summer","fall"))
+#drop columns
+eda_data <- eda_data[,-22] #drop property ID.y
+eda_data <- eda_data[,-1] #drop property ID.x
+
+#drop parcels sold as vacant as there are only 67 "yes" -- 0.3% of our data
+#also drop parcels where xrImprovedStatusID is not 2 because there are barely any and those aren't houses
+eda_data <- eda_data %>% 
+  filter(SoldAsVacantFlag == FALSE) %>% 
+  filter(xrImprovedStatusID == 2)
+
+#drop more columns
+eda_data <- eda_data[,-20] #drop soldasvacantflag
+eda_data <- eda_data[,-23] #drop year 2022 because it's an empty column 
+eda_data <- eda_data[,-4] #drop xrImprovedStatusID because they're all 2
+
+#rename columns
+colnames(eda_data) <- c("ParcelID","BuildingType","PhysicalCondition","Neighborhood","Quality",
+                        "YearBuilt","FullBath","RatingBath","HalfBath",
+                        "RatingHalfBath","Kitchen","RatingKitchen",
+                        "PercentAirConditioned","PrimaryWall","TotalFinishedArea",
+                        "LandSqFt","LastSalePrice","SaleDate","Valuation_2020",
+                        "Valuation_2021","Valuation_2019","LastSaleDate",
+                        "SeasonLastSold")
+#order columns
+eda_data_final <- eda_data %>%
+  dplyr::select(ParcelID,LastSalePrice,LastSaleDate,SeasonLastSold, Valuation_2019,Valuation_2020,Valuation_2021,BuildingType,PhysicalCondition,Neighborhood,Quality,YearBuilt,
+         FullBath,RatingBath,HalfBath,RatingHalfBath,Kitchen,RatingKitchen,
+         PercentAirConditioned,PrimaryWall,TotalFinishedArea,LandSqFt)
+
+#recode AC as a categorical variable
+eda_data_final <- eda_data_final %>% 
+  mutate(AirConditioned = case_when(
+    PercentAirConditioned == 100 ~ 2,
+    PercentAirConditioned == 0 ~ 0,
+    TRUE ~ 1
+  ))
+
+#drop percent AC variable
+eda_data_final <- eda_data_final[,-19]
+
+eda_data_final %>% 
+  filter(LastSalePrice == 0) #there are only 9 of these. drop. 
+
+eda_data_final %>% 
+  filter(LastSalePrice < 1000,LastSalePrice > 0) #There are only 4 values > 0 and < 1000 so drop those too 
+
+eda_data_final <- eda_data_final %>% 
+  filter(LastSalePrice > 1000)
+
+eda_data_final %>% 
+  filter(YearBuilt < 1700) #only 2 -- probably not valid -- drop
+
+eda_data_final <- eda_data_final %>% 
+  filter(YearBuilt > 1700) 
+```
+
+## EDA
+
+```{r}
+summary(eda_data_final)
+```
+
+```{r}
+#histograms of last sale price
+require(ggthemes)
+ggplot(data=eda_data_final,aes(LastSalePrice)) + geom_histogram() + xlim(0,1000000) + labs(x="Last Sale Price in USD",y="Number of Properties") + 
+  theme_gdocs()
+```
+
+```{r}
+ggplot(data=eda_data_final,aes(Valuation_2021)) + geom_boxplot() + labs(x="2021 Valuation in USD",y="Number of Properties") + 
+  theme_gdocs()
+```
+
+```{r}
+fivenum(eda_data_final$LastSalePrice,na.rm=TRUE)
+```
+
+```{r}
+pivoted_eda <- eda_data_final %>% 
+  pivot_longer(cols=c("Valuation_2019","Valuation_2020","Valuation_2021"),
+               names_to = "ValuationYear",values_to = "Valuation_Amount")
+require(scales)
+ggplot(data=pivoted_eda,aes(Valuation_Amount)) + geom_boxplot() + labs(x="Valuation in USD") + facet_grid(rows=vars(ValuationYear)) + theme_gdocs() +scale_x_continuous(limits=c(0,300000),labels=comma) + theme(axis.text.y=element_blank())
+```
+
+```{r}
+require(ggcorrplot)
+matrix_data <- eda_data_final %>% 
+  dplyr::select(LastSalePrice,YearBuilt,FullBath,HalfBath,Kitchen,TotalFinishedArea,LandSqFt) %>% 
+  drop_na()
+model.matrix(~0+.,data=matrix_data) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(show.diag=F,type="lower",lab=T,lab_size = 2)
+```
+
+```{r}
+ggplot(data=eda_data_final,aes(x=YearBuilt,y=LastSalePrice)) + geom_point()
+```
+
+```{r}
+ggplot(data=eda_data_final,aes(LastSalePrice)) + geom_boxplot() + labs(x="Price of Last Sale in USD") + facet_grid(rows=vars(SeasonLastSold)) + theme_gdocs() +scale_x_continuous(limits=c(0,300000),labels=comma) + theme(axis.text.y=element_blank(),strip.text.y = element_text(size=15))
+```
+
+LDA to predict neighborhood --- did not really work but fun exercise
+
+```{r}
+require(MASS)
+lda_data <- eda_data_final %>% 
+  dplyr::select(Neighborhood,YearBuilt,FullBath,HalfBath,Kitchen,TotalFinishedArea,LandSqFt) %>% 
+  drop_na()
+#scale data
+lda_data_scaled <- as.data.frame(scale(lda_data[,-1]))
+#add neighbhorhood back in
+lda_data_scaled_2 <- cbind(lda_data_scaled,lda_data[,1])
+
+#perform LDA
+lda_model <- lda(Neighborhood~.,data=lda_data_scaled_2)
+neighb_predictions <- predict(lda_model,lda_data_scaled)
+
+#create confusion matrix
+conf_matrix <- as.data.frame.matrix(table(lda_data_scaled_2$Neighborhood,neighb_predictions$class))
+correct_guesses <- diag(as.matrix(conf_matrix))
+
+#error rate is 84%
+(nrow(lda_data_scaled_2) - sum(correct_guesses))/nrow(lda_data_scaled_2)
+```
+
+```{r}
+neighb_model <- lm(LastSalePrice~factor(Neighborhood),data=eda_data_final)
+summary(neighb_model)
+```
+
+```{r}
+neighb_changes <- eda_data_final %>% 
+  drop_na(Valuation_2021,Valuation_2019) %>% 
+  mutate(Valuation_Change = Valuation_2021-Valuation_2019) %>% 
+  group_by(Neighborhood) %>% 
+  summarize(Mean_Val_Change=mean(Valuation_Change),Mean_Val = mean(Valuation_2019)) %>% 
+  mutate(Percent_Change=(Mean_Val_Change/Mean_Val*100)) %>% 
+  arrange(desc(Mean_Val_Change))
+
+ggplot(data=neighb_changes,aes(x=Percent_Change)) + geom_histogram() + labs(x="Percent Change in Mean Home Value between 2019-2021",y="Number of Neighborhoods") + 
+  theme_gdocs()
+```
+
+last sale price versus last valuation
+
+```{r}
+stuff <- eda_data_final
+stuff$LastSaleYear <- format(stuff$LastSaleDate,format="%Y")
+other_stuff <- stuff %>%
+  filter(LastSaleYear > 2020) %>% 
+  mutate(Discrepancy = LastSalePrice - Valuation_2021) %>% 
+  drop_na(Discrepancy)
+
+mean(other_stuff$Discrepancy)
+
+other_stuff_2 <- stuff %>%
+  filter(LastSaleYear == 2019) %>% 
+  mutate(Discrepancy = LastSalePrice - Valuation_2019) %>% 
+  drop_na(Discrepancy)
+
+mean(other_stuff_2$Discrepancy)
+
+other_stuff_3 <-  stuff %>%
+  filter(LastSaleYear == 2020) %>% 
+  mutate(Discrepancy = LastSalePrice - Valuation_2020) %>% 
+  drop_na(Discrepancy)
+
+mean(other_stuff_3$Discrepancy)
+
+
+```
+
+How does quality/condition of house affect last sale price?
+
+```{r}
+qual_model <- lm(LastSalePrice~Quality,data=eda_data_final)
+
+anova(qual_model)
+
+
+```
+
+```{r}
+#histograms of sale price by quality
+data_new <- eda_data_final                            # #Replicate data
+data_new$group <- factor(data_new$PhysicalCondition,levels = c("EX", "VG", "GD", "AV","FR","PR","VP","UN")) #relevel
+
+ggplot(data=data_new,aes(y=LastSalePrice)) + geom_boxplot() + labs(y="Price of Last Sale in USD") + facet_grid(cols=vars(group)) + theme_gdocs() +scale_y_continuous(limits=c(0,300000),labels=comma) + theme(axis.text.x=element_blank(),strip.text.y = element_text(size=15))
+```
+
+```{r}
+data_new$group2 <- factor(data_new$Quality,levels = c("AA","AA-","A+","A","A-","B+","B","B-","C+","C","C-","D+","D","D-","E+","E","M&S 2")) #relevel
+
+ggplot(data=data_new,aes(y=LastSalePrice)) + geom_boxplot() + labs(y="Price of Last Sale in USD") + facet_grid(cols=vars(group2)) + theme_gdocs() +scale_y_continuous(limits=c(0,2000000),labels=comma) + theme(axis.text.x=element_blank(),strip.text.y = element_text(size=15))
+```
+
+boxplot of lower median sale price neighborhoods and higher median sale price neighborhoods
+
+```{r}
+require(stats)
+neighbor_comp <- eda_data_final %>% 
+  group_by(Neighborhood) %>% 
+  summarize(median=median(LastSalePrice)) %>%
+  arrange(desc(median))
+
+#2870, 2850, 2950
+head(neighbor_comp)
+#3060,4560,4425
+
+neighbor_comp_2 <- eda_data_final %>% 
+  filter(Neighborhood %in% c(3060,4560,4425,2870,2850,2950))
+
+neighbor_comp_2$group <- factor(neighbor_comp_2$Neighborhood,levels = c("3060","4560","4425","2950","2850","2870")) #relevel
+
+ggplot(data=neighbor_comp_2,aes(y=LastSalePrice)) + geom_boxplot() + labs(y="Price of Last Sale in USD") + facet_grid(cols=vars(group)) + theme_gdocs() +scale_y_continuous(limits=c(0,1000000),labels=comma) + theme(axis.text.x=element_blank(),strip.text.y = element_text(size=15))
+```
+
+```{r}
+stuff$SaleYear <- factor(stuff$LastSaleYear,levels= c("2021","2020","2019"))
+
+stuff <- stuff %>% 
+  drop_na(SaleYear)
+
+ggplot(data=stuff,aes(y=LastSalePrice)) + geom_boxplot() + labs(y="Price of Last Sale in USD") + facet_grid(cols=vars(SaleYear)) + theme_gdocs() +scale_y_continuous(limits=c(0,300000),labels=comma) + theme(axis.text.x=element_blank(),strip.text.y = element_text(size=15))
+
+stuff %>% 
+  group_by(SaleYear) %>% 
+  summarize(median=median(LastSalePrice))
+```
