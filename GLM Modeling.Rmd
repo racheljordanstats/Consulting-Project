@@ -1,0 +1,283 @@
+---
+title: "GLM Modeling"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prepare data for modeling
+
+```{r}
+#load data set
+modeling_data_raw <- read.csv("All Data for Modeling.csv",header=T)
+modeling_data <- modeling_data_raw
+
+#drop property ID, parcel ID, lastsaledate
+modeling_data <- modeling_data %>% 
+  select(-c(PropertyID,ParcelID,LastSaleDate))
+
+#relevel factors
+modeling_data$PhysicalCondition <- factor(modeling_data$PhysicalCondition,
+                                          levels=c("UN","VP","PR","FR","AV",
+                                                   "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$Quality <- factor(modeling_data$Quality, levels=c("E-","E","E+",
+                                                                "D-","D","D+",
+                                                                "C-","C","C+",
+                                                                "B-","B","B+",
+                                                                "A-","A","A+",
+                                                                "AA-","AA","AA+"),
+                                labels=c(1:18))
+
+modeling_data$RatingBath <- factor(modeling_data$RatingBath,
+                                          levels=c("UN","VP","PR","FR","AV",
+                                                   "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$RatingHalfBath <- factor(modeling_data$RatingHalfBath,
+                                   levels=c("UN","VP","PR","FR","AV",
+                                            "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$RatingKitchen <- factor(modeling_data$RatingKitchen,
+                                   levels=c("UN","VP","PR","FR","AV",
+                                            "GD","VG","EX"),labels=c(1:8))
+```
+
+## Split into train and test sets
+
+```{r}
+#split into train and test sets
+library(caTools)
+#make this example reproducible
+set.seed(2022)
+#use 80% of dataset as training set and 20% as test set
+sample <- sample.split(modeling_data$HalfBath, SplitRatio = 0.8)
+train  <- subset(modeling_data, sample == TRUE)
+test   <- subset(modeling_data, sample == FALSE)
+```
+
+## Implementing the bestglm() function
+
+```{r}
+#load bestglm package
+require(bestglm)
+
+###arranging the data correctly
+#load tidyverse
+require(tidyverse)
+#move LastSalePrice to front and change name to y and removing duplicate last sale price variable
+modeling_data_for_best_glm <- modeling_data %>% 
+  mutate(y = LastSalePrice) %>% 
+  select(y, everything()) %>% 
+  select(-c(LastSalePrice))
+
+#bestglm_model <- bestglm(modeling_data_for_best_glm,family=Gamma(link="log"))
+```
+
+## Performing purposeful variable selection
+
+Steps from Agresti book section 5.1.4
+
+1.  Construct an initial main-effects model using explanatory variables that include the known important variables and others that show any evidence of being relevant when used as sole predictors (e.g. having p-value of \< 0.2)
+
+```{r}
+summary(glm(LastSalePrice ~ BuildingType,data=train,family=Gamma(link="log")))
+#some are significant. KEEP
+
+summary(glm(LastSalePrice ~ PhysicalCondition,data=train,family=Gamma(link="log"))) #bad conditions are more significant, but KEEP
+
+summary(glm(LastSalePrice ~ as.factor(Neighborhood),data=train,family=Gamma(link="log")))
+#definitely significant. KEEP
+
+summary(glm(LastSalePrice ~ Quality,data=train,family=Gamma(link="log")))
+#significant. KEEP
+
+summary(glm(LastSalePrice ~ YearBuilt,data=train,family=Gamma(link="log")))
+#significant. KEEP
+
+summary(glm(LastSalePrice ~ FullBath,data=train,family=Gamma(link="log")))
+#definitely significant. KEEP
+
+summary(glm(LastSalePrice ~ RatingBath,data=train,family=Gamma(link="log")))
+#significant at the low ends and the high ends, KEEP
+
+summary(glm(LastSalePrice ~ HalfBath,data=train,family=Gamma(link="log")))
+#almost significant - KEEP
+
+summary(glm(LastSalePrice ~ RatingHalfBath,data=train,family=Gamma(link="log")))
+#significant at the low ends and the high ends, KEEP
+
+summary(glm(LastSalePrice ~ Kitchen,data=train,family=Gamma(link="log")))
+#close to significant, KEEP
+
+summary(glm(LastSalePrice ~ RatingKitchen,data=train,family=Gamma(link="log")))
+#significant at the low end, KEEP
+
+summary(glm(LastSalePrice ~ PrimaryWall,data=train,family=Gamma(link="log")))
+#asphalt and aluminum are almost significant, maybe make those dummy variables? Keep for now
+
+summary(glm(LastSalePrice ~ TotalFinishedArea,data=train,family=Gamma(link="log")))
+#obviously super significant, KEEP
+
+summary(glm(LastSalePrice ~ LandSF,data=train,family=Gamma(link="log")))
+#significant, KEEP
+
+summary(glm(LastSalePrice ~ SeasonSold,data=train,family=Gamma(link="log")))
+#almost significant, wait but we're not going to have that data for the houses we're trying to predict on, so DROP THIS VARIABLE ACTUALLY BECAUSE IT WILL NOT HELP OUR MAIN GOAL
+
+summary(glm(LastSalePrice ~ AirConditioned,data=train,family=Gamma(link="log")))
+#significant, KEEP
+
+summary(glm(LastSalePrice ~ FrameShed,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ FrameGarage,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ MasonAdjustment,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ MiscSfyi,data=train,family=Gamma(link="log")))
+#keep omg why is the coefficient negative?? are misc special features bad
+
+summary(glm(LastSalePrice ~ PlasticLinedPool,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ PrefabPool,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ Canopy,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ MetalShed,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ SurfaceParking,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ ConcreteParking,data=train,family=Gamma(link="log")))
+#drop, but I wonder if we made a variable that was just a general parking yes/no dummy if that would be significant
+
+summary(glm(LastSalePrice ~ BrickGarage,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ DivingBoard,data=train,family=Gamma(link="log")))
+#this is significant but probably just because pool is significant, keep for now
+
+summary(glm(LastSalePrice ~ PoolLadder,data=train,family=Gamma(link="log")))
+#see note above
+
+summary(glm(LastSalePrice ~ ReinforcedConcreteSF,data=train,family=Gamma(link="log")))
+#super significant. maybe ask colin what this is. keep
+
+summary(glm(LastSalePrice ~ BlacktopParking,data=train,family=Gamma(link="log")))
+#drop, there are no instances of this in the data
+
+summary(glm(LastSalePrice ~ GreenHouse,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ FiberglassPool,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ Patio,data=train,family=Gamma(link="log")))
+#drop, there are no instances of this in the data
+
+summary(glm(LastSalePrice ~ PoolLighting,data=train,family=Gamma(link="log")))
+#significant but probably just bc theres a pool
+
+summary(glm(LastSalePrice ~ DetatchedGarage,data=train,family=Gamma(link="log")))
+#drop, no instances of this in the data
+
+summary(glm(LastSalePrice ~ FrameGarage,data=train,family=Gamma(link="log")))
+#keep
+
+summary(glm(LastSalePrice ~ AsphaltPaving,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ Carport,data=train,family=Gamma(link="log")))
+#drop
+
+summary(glm(LastSalePrice ~ GunitePool,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ RecRoom,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ ChainLinkFence,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ MasonryGarage,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ BasementParking,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ Attic,data=train,family=Gamma(link="log")))
+#drop, none in data
+
+summary(glm(LastSalePrice ~ Valuation2020,data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ Valuation2021,data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ Valuation2019,data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ XCoordinate,data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ YCoordinate,data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ as.factor(NeighborhoodCluster),data=train,family=Gamma(link="log")))
+#super significant, keep
+
+summary(glm(LastSalePrice ~ as.factor(GEO_TRACT),data=train,family=Gamma(link="log")))
+#super significant, keep. maybe we can play with which of the location variables gives us the best result because we don't need all of them
+```
+
+Step 2. Conduct backward elimination, keeping a variable if it is either significant at a somewhat more stringent level or shows evidence of being a relevant confounder, in the sense that the estimated effect of a key variable changes substantially when it is removed.
+
+```{r}
+options(max.print = 10000000)
+model_1_bw <- glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + ReinforcedConcreteSF + FiberglassPool + PoolLighting + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log")) #remove reinforcedconcreteSF, p value of 0.988
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FiberglassPool + PoolLighting + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove MiscSfyi 0.959
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + MasonAdjustment + PlasticLinedPool + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FiberglassPool + PoolLighting + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove plasticlinedpool
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + MasonAdjustment + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FiberglassPool + PoolLighting + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove poollighting
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + MasonAdjustment + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FiberglassPool + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove masonadjustment
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FiberglassPool + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove fiberglass pool
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + PrefabPool + MetalShed + BrickGarage + DivingBoard + PoolLadder + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove diving board 
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + AirConditioned + FrameGarage + PrefabPool + MetalShed + BrickGarage + PoolLadder + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove air conditioning 
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWall + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + PoolLadder + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove primary wall
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + PoolLadder + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove rating kitchen
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen  + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + PoolLadder + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove pool ladder
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen  + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove ratingbath
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + HalfBath + RatingHalfBath + Kitchen  + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + FrameGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove framegarage
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + HalfBath + RatingHalfBath + Kitchen  + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove rating half bath
+
+summary(glm(LastSalePrice ~ BuildingType + PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + HalfBath  + Kitchen  + TotalFinishedArea + LandSF + FrameGarage + PrefabPool + MetalShed + BrickGarage + Valuation2020 + Valuation2021 + Valuation2019 + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove frame garage
+
+middle_model_bw <- summary(glm(LastSalePrice ~  PhysicalCondition + factor(Neighborhood) + Quality + YearBuilt + FullBath + HalfBath  + Kitchen  + TotalFinishedArea + LandSF  + PrefabPool + MetalShed + BrickGarage + Valuation2020 + Valuation2021 + Valuation2019 +  RatingHalfBath + XCoordinate + YCoordinate,data=train,family=Gamma(link="log"))) #remove frame garage
+
+#check in on this little buddy and see if it's improved since first model from this section
+
+require(boot)
+mean((predict(model_1_bw,newdata = test) - test$LastSalePrice)**2)
+```
