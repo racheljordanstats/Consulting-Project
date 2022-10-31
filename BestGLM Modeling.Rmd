@@ -1,0 +1,140 @@
+---
+title: "BestGLM Modeling"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data preparation for bestGLM
+
+```{r}
+#import data
+training <- read.csv("Training Data.csv",header=T)
+testing <- read.csv("Testing Data.csv", header=T)
+
+#remove X variable which I think got inserted during the test/train split 
+require(tidyverse)
+training <- training %>% 
+  select(-c(X))
+testing <- testing %>% 
+  select(-c(X))
+
+#change all variables in training set explicitly to either factor or numeric to avoid error message
+training$BuildingType <- as.factor(training$BuildingType)
+training$PhysicalCondition <- factor(training$PhysicalCondition,
+                                          levels=c(1:8),labels=c(1:8))
+training$Neighborhood <- as.factor(training$Neighborhood)
+training$YearBuilt <- as.numeric(training$YearBuilt)
+training$FullBath <- as.numeric(training$FullBath)
+training$RatingBath <- factor(training$RatingBath,
+                                          levels=c(1:8),labels=c(1:8))
+training$HalfBath <- as.numeric(training$HalfBath)
+training$Kitchen <- as.numeric(training$Kitchen)
+training$TotalFinishedArea <- as.numeric(training$TotalFinishedArea)
+training$LandSF <- as.numeric(training$LandSF)
+training$LastSalePrice <- as.numeric(training$LastSalePrice)
+training$SeasonSold <- as.factor(training$SeasonSold)
+training$AirConditioned <- as.factor(training$AirConditioned)
+training$FrameShed <- as.numeric(training$FrameShed)
+training$MasonAdjustment <- as.numeric(training$MasonAdjustment)
+training$MiscSfyi <- as.numeric(training$MiscSfyi)
+training$PlasticLinedPool <- as.numeric(training$PlasticLinedPool)
+training$PrefabPool <- as.numeric(training$PrefabPool)
+training$Canopy <- as.numeric(training$Canopy)
+training$MetalShed <- as.numeric(training$MetalShed)
+training$DivingBoard <- as.numeric(training$DivingBoard)
+training$PoolLadder <- as.numeric(training$PoolLadder)
+training$ReinforcedConcreteSF <- as.numeric(training$ReinforcedConcreteSF)
+training$GreenHouse <- as.numeric(training$GreenHouse)
+training$FiberglassPool <- as.numeric(training$FiberglassPool)
+training$PoolLighting <- as.numeric(training$PoolLighting)
+training$FrameGarage.1 <- as.numeric(training$FrameGarage.1)
+training$AsphaltPaving <- as.numeric(training$AsphaltPaving)
+training$Valuation2020 <- as.numeric(training$Valuation2020)
+training$Valuation2021 <- as.numeric(training$Valuation2021)
+training$Valuation2019 <- as.numeric(training$Valuation2019)
+training$XCoordinate <- as.numeric(training$XCoordinate)
+training$YCoordinate <- as.numeric(training$YCoordinate)
+training$NeighborhoodCluster <- as.factor(training$NeighborhoodCluster)
+training$QualityC <- factor(training$QualityC,levels=c("Worse","B","A","AA"),labels= c(1:4))
+training$PrimaryWallC <- as.factor(training$PrimaryWallC)
+training$Parking <- as.numeric(training$Parking)
+
+#move response variable to the end and rename it y, as required by bestglm function
+best_glm_training <- training %>% 
+  mutate(y = LastSalePrice) %>% 
+  select(-y,-LastSalePrice,-BuildingType,y)
+  
+```
+
+## Try bestGLM
+
+```{r}
+require(bestglm)
+
+#best_glm_model <- bestglm(best_glm_training, family=Gamma(link="log"))
+#error message in bestglm -- p has to be <= 15! 
+
+#start removing predictors so you can use bestglm
+thinned_bestglm_data <- best_glm_training %>% 
+  select(-c(Valuation2020,Valuation2021,Valuation2019,FrameGarage.1,SeasonSold,Neighborhood,MiscSfyi,PrefabPool, Canopy, MetalShed, DivingBoard,GreenHouse,FiberglassPool, PoolLighting, AsphaltPaving, RatingBath, FrameShed, MasonAdjustment,PoolLadder,Kitchen,ReinforcedConcreteSF))
+
+#look at the special features and take out the ones that are less significant when plotted against the response on their own
+
+summary(glm(y ~ FrameShed,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ MasonAdjustment,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ MiscSfyi,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove 
+summary(glm(y ~ PlasticLinedPool,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ PrefabPool,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ Canopy,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ MetalShed,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ DivingBoard,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ PoolLadder,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ ReinforcedConcreteSF,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ GreenHouse,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ FiberglassPool,data=thinned_bestglm_data,family=Gamma(link="log")))
+#remove
+summary(glm(y ~ PoolLighting,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ AsphaltPaving,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ FrameShed,data=thinned_bestglm_data,family=Gamma(link="log")))
+summary(glm(y ~ Parking,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ QualityC,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ YCoordinate,data=thinned_bestglm_data,family=Gamma(link="log"))) #leave in
+summary(glm(y ~ Kitchen,data=thinned_bestglm_data,family=Gamma(link="log"))) #remove
+summary(glm(y ~ AirConditioned,data=thinned_bestglm_data,family=Gamma(link="log")))
+
+
+#try bestglm again
+bestglm_model <- bestglm(thinned_bestglm_data,family=Gamma(link="log"))
+summary(bestglm_model$BestModel)
+
+#change lastsaleprice name to y so you can use bestglm model
+testing <- testing %>% 
+  mutate(y = LastSalePrice) %>% 
+  select(-c(LastSalePrice))
+#crossvalidate
+mean((predict(bestglm_model$BestModel,newdata = testing) - testing$y)**2)
+
+#change qualityc into just "better" and "worse in both train and test
+testing <- testing %>% 
+  mutate(Quality = case_when(
+    QualityC == "Worse" ~ "Worse",
+    QualityC == "B" ~ "Better",
+    QualityC == "A" ~ "Better",
+    QualityC == "AA" ~ "Better"
+  )) %>% 
+  select(-c(QualityC))
+
+training <- training %>% 
+  mutate(Quality = case_when(
+    QualityC == "Worse" ~ "Worse",
+    QualityC == "B" ~ "Better",
+    QualityC == "A" ~ "Better",
+    QualityC == "AA" ~ "Better"
+  )) %>% 
+  select(-c(QualityC))
+```
