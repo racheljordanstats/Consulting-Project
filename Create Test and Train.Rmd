@@ -1,0 +1,131 @@
+---
+title: "Create Test and Train"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Collapsing BuildingType
+
+```{r}
+#examine the effect of buildingtype on lastsaleprice to see which categories should be grouped together
+summary(glm(LastSalePrice ~ BuildingType, family=Gamma(link="log"),data = modeling_data)) # i actually think we should remove this from the model based on this result. none are significant predictors here except mansion which is going to be highly correlated with the square footage of the house, a variable we already have that shows a lot of significance by itself
+```
+
+## Collapsing Quality
+
+```{r}
+#examine the effect of quality on lastsaleprice to see which categories should be grouped together
+summary(glm(LastSalePrice ~ Quality,data=modeling_data, family=Gamma(link="log")))
+#put all B grades, all A grades, and all AA grades together and label the other ones "worse quality" 
+
+#collapse to new variable QualityC and drop original variable Quality
+require(tidyverse)
+collapsed_data <- modeling_data %>% 
+  mutate(QualityC = case_when(
+    Quality == 1 ~ "Worse",
+    Quality == 2 ~ "Worse",
+    Quality == 3 ~ "Worse",
+    Quality == 4 ~ "Worse",
+    Quality == 5 ~ "Worse",
+    Quality == 6 ~ "Worse",
+    Quality == 7 ~ "Worse",
+    Quality == 8 ~ "Worse",
+    Quality == 9 ~ "Worse",
+    Quality == 10 ~ "B",
+    Quality == 11 ~ "B",
+    Quality == 12 ~ "B",
+    Quality == 13 ~ "A",
+    Quality == 14 ~ "A",
+    Quality == 15 ~ "A",
+    Quality == 16 ~ "AA",
+    Quality == 17 ~ "AA",
+    Quality == 18 ~ "AA"
+  )) %>% 
+  select(-c(Quality))
+```
+
+## Collapse PrimaryWall
+
+```{r}
+#examine to see how to collapse
+summary(glm(LastSalePrice ~ PrimaryWall, data= collapsed_data,family=Gamma(link="log")))
+
+#look at distribution
+table(collapsed_data$PrimaryWall)
+#aluminum/vinyl should be collapsed to one category and so should precast masonry and masonry/frame and prem wood and wood based on quantities 
+
+#collapse categories to create primarywallc variable and remove original primarywall variable
+collapsed_data <- collapsed_data %>% 
+  mutate(PrimaryWallC = case_when(
+    PrimaryWall == "Alum/Vynyl Siding" ~ "Aluminum/Vinyl",
+    PrimaryWall == "Aluminum/Vinyl" ~ "Aluminum/Vinyl",
+    PrimaryWall == "Masonry/Frame" ~ "Masonry",
+    PrimaryWall == "PrecastMasonry" ~ "Masonry",
+    PrimaryWall == "Asphalt/Other" ~ "Asphalt/Other",
+    PrimaryWall == "Block" ~ "Block",
+    PrimaryWall == "Brick" ~ "Brick",
+    PrimaryWall == "Fiber Cement/Hardiplank" ~ "Fiber Cement/Hardiplank",
+    PrimaryWall == "Prem Wood" ~ "Wood",
+    PrimaryWall == "Wood" ~ "Wood",
+    PrimaryWall == "Stone" ~ "Stone",
+    PrimaryWall == "Stucco" ~ "Stucco"
+   
+  )) %>% 
+  select(-c(PrimaryWall))
+```
+
+## We should remove GEO_TRACT from our model as this is collinear with the other location variables and there are too many GEO_TRACTS to quickly collapse well. If we had time to cluster these that might be good, but I think neighborhood or neighborhood cluster would be a better measure. 
+
+now I'm getting an error that says "Warning: prediction from a rank-deficient fit may be misleading". check for collinearity
+
+```{r}
+
+#use this model to test for collinearity by adding and removing variables one by one
+
+test_model <- glm(LastSalePrice ~ RatingBath  + AsphaltPaving +  FiberglassPool +GreenHouse +ReinforcedConcreteSF + MetalShed + Canopy  + MiscSfyi  + FrameShed + Parking + PhysicalCondition + YearBuilt + QualityC + FullBath + HalfBath +   Kitchen +  PrimaryWallC +  TotalFinishedArea + LandSF +  AirConditioned  + XCoordinate + YCoordinate + factor(NeighborhoodCluster) + MasonAdjustment+ Valuation2021 + Valuation2020 + Valuation2019 + PlasticLinedPool  + PrefabPool + DivingBoard  + PoolLadder + PoolLighting , family=Gamma(link="log"),data=train_c)
+
+# BlacktopParking, Patio, DetatchedGarage, GunitePool, RecRoom, ChainLinkFence, MasonryGarage, BasementParking, Attic, factor(Neighborhood), RatingKitchen +  RatingHalfBath, GEO_TRACT a problem in terms of collinearity when adding back into the model
+
+mean((predict(test_model,newdata = test_c) - test_c$LastSalePrice)**2) #now this is giving NA.
+
+
+table(collapsed_data$Patio) #only 4 properties have patios -- remove this variable
+
+table(collapsed_data$GunitePool) #only one property has 1 -- remove this variable
+
+table(collapsed_data$RecRoom) #no properties have any. remove this variable
+
+table(collapsed_data$ChainLinkFence) #one property has 2. that is all. remove this variable
+
+table(collapsed_data$Attic) #no properties have any. remove this variable
+
+#rating kitchen is pretty collinear with rating bath. keep rating_kitchen out 
+cramerV(collapsed_data$RatingKitchen, collapsed_data$RatingBath)
+
+#make a variable that's just "parking" and remove those other variables with few or no observations 
+collapsed_data <- collapsed_data %>% 
+  mutate(Parking = BlacktopParking + DetatchedGarage + MasonryGarage + BasementParking + Carport + FrameGarage+BrickGarage  +ConcreteParking + SurfaceParking) %>% 
+  select(-c(BlacktopParking,DetatchedGarage,MasonryGarage,BasementParking,Carport,FrameGarage,BrickGarage, ConcreteParking, SurfaceParking,Patio, GunitePool,RecRoom,ChainLinkFence,Attic,RatingKitchen,RatingHalfBath))
+
+summary(collapsed_data)
+
+#the biggest problem with NA's is in HalfBath. I am going to change those NA's to 0, and then drop the rest of the NA's in this data set because there are NOT that many. most have 13 NA's so they might even be missing from the same ParcelID
+
+collapsed_data$HalfBath[is.na(collapsed_data$HalfBath)] <- 0
+collapsed_data$FullBath[is.na(collapsed_data$FullBath)] <- 0
+
+#remove geotract from the data set because it has 507 NA's and dropping them would remove too many houses from the data set
+
+#now drop NA and it shouldn't remove that many
+collapsed_data_dropped_NA <- collapsed_data %>% 
+  select(-c(GEO_TRACT)) %>% 
+  drop_na() #this removed about 130 observations. 19789 --> 19656. I think this is acceptable. We still have a ton of observations. now try the MSE calc again
+
+```
+
+This test and train works and gives a real value for MSE. Amazing!!! Send to Charles.

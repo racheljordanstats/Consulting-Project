@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Prepare data for modeling
 
 ```{r}
+
+require(tidyverse)
 #load data set
 modeling_data_raw <- read.csv("All Data for Modeling.csv",header=T)
 modeling_data <- modeling_data_raw
@@ -57,6 +59,15 @@ set.seed(2022)
 sample <- sample.split(modeling_data$HalfBath, SplitRatio = 0.8)
 train  <- subset(modeling_data, sample == TRUE)
 test   <- subset(modeling_data, sample == FALSE)
+
+#testing testing 
+library(caTools)
+#make this example reproducible
+set.seed(1031)
+#use 80% of dataset as training set and 20% as test set
+sample_c <- sample.split(collapsed_data_dropped_NA$HalfBath, SplitRatio = 0.8)
+train_c  <- subset(collapsed_data_dropped_NA, sample_c == TRUE)
+test_c   <- subset(collapsed_data_dropped_NA, sample_c == FALSE)
 ```
 
 ## Implementing the bestglm() function
@@ -278,6 +289,12 @@ middle_model_bw <- summary(glm(LastSalePrice ~  PhysicalCondition + factor(Neigh
 
 #check in on this little buddy and see if it's improved since first model from this section
 
+test_model <- glm(LastSalePrice ~ PhysicalCondition + factor(Neighborhood) + QualityC + YearBuilt + FullBath + RatingBath + HalfBath + RatingHalfBath + Kitchen + RatingKitchen + PrimaryWallC + TotalFinishedArea + LandSF + AirConditioned + FrameShed + FrameGarage + MasonAdjustment + MiscSfyi  + Canopy + MetalShed + SurfaceParking + ConcreteParking + BrickGarage  + ReinforcedConcreteSF + BlacktopParking + GreenHouse + FiberglassPool + Patio  + DetatchedGarage + AsphaltPaving + Carport + GunitePool + RecRoom + ChainLinkFence + MasonryGarage + BasementParking + Attic  + Valuation2021 + Valuation2020 + Valuation2019 + XCoordinate + YCoordinate + factor(NeighborhoodCluster), family=Gamma(link="log"),data=collapsed_data)
+
+PlasticLinedPool + PrefabPool DivingBoard + PoolLadder + PoolLighting
+
 require(boot)
-mean((predict(model_1_bw,newdata = test) - test$LastSalePrice)**2)
+mean((predict(test_model,newdata = test_c) - test_c$LastSalePrice)**2)
+
+
 ```
