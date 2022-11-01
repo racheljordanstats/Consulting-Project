@@ -9,6 +9,46 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Load data
+
+```{r}
+#load tidyverse
+require(tidyverse)
+
+#load data set
+modeling_data_raw <- read.csv("All Data for Modeling.csv",header=T)
+modeling_data <- modeling_data_raw
+
+#drop property ID, parcel ID, lastsaledate
+modeling_data <- modeling_data %>% 
+  select(-c(PropertyID,ParcelID,LastSaleDate))
+
+#relevel factors
+modeling_data$PhysicalCondition <- factor(modeling_data$PhysicalCondition,
+                                          levels=c("UN","VP","PR","FR","AV",
+                                                   "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$Quality <- factor(modeling_data$Quality, levels=c("E-","E","E+",
+                                                                "D-","D","D+",
+                                                                "C-","C","C+",
+                                                                "B-","B","B+",
+                                                                "A-","A","A+",
+                                                                "AA-","AA","AA+"),
+                                labels=c(1:18))
+
+modeling_data$RatingBath <- factor(modeling_data$RatingBath,
+                                          levels=c("UN","VP","PR","FR","AV",
+                                                   "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$RatingHalfBath <- factor(modeling_data$RatingHalfBath,
+                                   levels=c("UN","VP","PR","FR","AV",
+                                            "GD","VG","EX"),labels=c(1:8))
+
+modeling_data$RatingKitchen <- factor(modeling_data$RatingKitchen,
+                                   levels=c("UN","VP","PR","FR","AV",
+                                            "GD","VG","EX"),labels=c(1:8))
+```
+
 ## Collapsing BuildingType
 
 ```{r}
@@ -79,7 +119,7 @@ collapsed_data <- collapsed_data %>%
   select(-c(PrimaryWall))
 ```
 
-## We should remove GEO_TRACT from our model as this is collinear with the other location variables and there are too many GEO_TRACTS to quickly collapse well. If we had time to cluster these that might be good, but I think neighborhood or neighborhood cluster would be a better measure. 
+## We should remove GEO_TRACT from our model as this is collinear with the other location variables and there are too many GEO_TRACTS to quickly collapse well. If we had time to cluster these that might be good, but I think neighborhood or neighborhood cluster would be a better measure.
 
 now I'm getting an error that says "Warning: prediction from a rank-deficient fit may be misleading". check for collinearity
 
@@ -129,3 +169,9 @@ collapsed_data_dropped_NA <- collapsed_data %>%
 ```
 
 This test and train works and gives a real value for MSE. Amazing!!! Send to Charles.
+
+```{r}
+write.csv(collapsed_data_dropped_NA,"Fixed Data for Modeling.csv")
+write.csv(train_c,"Training Data.csv")
+write.csv(test_c, "Testing Data.csv")
+```

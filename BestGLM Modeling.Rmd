@@ -69,6 +69,53 @@ best_glm_training <- training %>%
   mutate(y = LastSalePrice) %>% 
   select(-y,-LastSalePrice,-BuildingType,y)
   
+#edit testing data as well to match
+#change all variables in testing set explicitly to either factor or numeric to avoid error message
+testing$BuildingType <- as.factor(testing$BuildingType)
+testing$PhysicalCondition <- factor(testing$PhysicalCondition,
+                                          levels=c(1:8),labels=c(1:8))
+testing$Neighborhood <- as.factor(testing$Neighborhood)
+testing$YearBuilt <- as.numeric(testing$YearBuilt)
+testing$FullBath <- as.numeric(testing$FullBath)
+testing$RatingBath <- factor(testing$RatingBath,
+                                          levels=c(1:8),labels=c(1:8))
+testing$HalfBath <- as.numeric(testing$HalfBath)
+testing$Kitchen <- as.numeric(testing$Kitchen)
+testing$TotalFinishedArea <- as.numeric(testing$TotalFinishedArea)
+testing$LandSF <- as.numeric(testing$LandSF)
+testing$LastSalePrice <- as.numeric(testing$LastSalePrice)
+testing$SeasonSold <- as.factor(testing$SeasonSold)
+testing$AirConditioned <- as.factor(testing$AirConditioned)
+testing$FrameShed <- as.numeric(testing$FrameShed)
+testing$MasonAdjustment <- as.numeric(testing$MasonAdjustment)
+testing$MiscSfyi <- as.numeric(testing$MiscSfyi)
+testing$PlasticLinedPool <- as.numeric(testing$PlasticLinedPool)
+testing$PrefabPool <- as.numeric(testing$PrefabPool)
+testing$Canopy <- as.numeric(testing$Canopy)
+testing$MetalShed <- as.numeric(testing$MetalShed)
+testing$DivingBoard <- as.numeric(testing$DivingBoard)
+testing$PoolLadder <- as.numeric(testing$PoolLadder)
+testing$ReinforcedConcreteSF <- as.numeric(testing$ReinforcedConcreteSF)
+testing$GreenHouse <- as.numeric(testing$GreenHouse)
+testing$FiberglassPool <- as.numeric(testing$FiberglassPool)
+testing$PoolLighting <- as.numeric(testing$PoolLighting)
+testing$FrameGarage.1 <- as.numeric(testing$FrameGarage.1)
+testing$AsphaltPaving <- as.numeric(testing$AsphaltPaving)
+testing$Valuation2020 <- as.numeric(testing$Valuation2020)
+testing$Valuation2021 <- as.numeric(testing$Valuation2021)
+testing$Valuation2019 <- as.numeric(testing$Valuation2019)
+testing$XCoordinate <- as.numeric(testing$XCoordinate)
+testing$YCoordinate <- as.numeric(testing$YCoordinate)
+testing$NeighborhoodCluster <- as.factor(testing$NeighborhoodCluster)
+testing$QualityC <- factor(testing$QualityC,levels=c("Worse","B","A","AA"),labels= c(1:4))
+testing$PrimaryWallC <- as.factor(testing$PrimaryWallC)
+testing$Parking <- as.numeric(testing$Parking)
+
+#move response variable to the end and rename it y, as required by bestglm function
+best_glm_testing <- testing %>% 
+  mutate(y = LastSalePrice) %>% 
+  select(-y,-LastSalePrice,-BuildingType,y)
+
 ```
 
 ## Try bestGLM
@@ -111,30 +158,15 @@ summary(glm(y ~ AirConditioned,data=thinned_bestglm_data,family=Gamma(link="log"
 #try bestglm again
 bestglm_model <- bestglm(thinned_bestglm_data,family=Gamma(link="log"))
 summary(bestglm_model$BestModel)
+#Morgan-Tatar search since family is non-gaussian.
+#Note: factors present with more than 2 levels.
 
-#change lastsaleprice name to y so you can use bestglm model
-testing <- testing %>% 
-  mutate(y = LastSalePrice) %>% 
-  select(-c(LastSalePrice))
+#change testing variables to match training variables
 #crossvalidate
-mean((predict(bestglm_model$BestModel,newdata = testing) - testing$y)**2)
+mean((predict(bestglm_model$BestModel,newdata = best_glm_testing, type="response") - best_glm_testing$y)**2) #MSE is equal to 40,807,050,303. predictions are on the wrong scale. insert type= "response" and you get 2,992,232,474. Better! 
 
-#change qualityc into just "better" and "worse in both train and test
-testing <- testing %>% 
-  mutate(Quality = case_when(
-    QualityC == "Worse" ~ "Worse",
-    QualityC == "B" ~ "Better",
-    QualityC == "A" ~ "Better",
-    QualityC == "AA" ~ "Better"
-  )) %>% 
-  select(-c(QualityC))
+sqrt(2992232474) #we are off by an average amount of $54,701.3
 
-training <- training %>% 
-  mutate(Quality = case_when(
-    QualityC == "Worse" ~ "Worse",
-    QualityC == "B" ~ "Better",
-    QualityC == "A" ~ "Better",
-    QualityC == "AA" ~ "Better"
-  )) %>% 
-  select(-c(QualityC))
+#is a single off prediction messing with the MSE? 
+best_glm_predictions <- as.data.frame(predict(bestglm_model$BestModel, newdata = best_glm_testing, type = "response"))
 ```
