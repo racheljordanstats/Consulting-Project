@@ -1,0 +1,147 @@
+---
+title: "Purposeful Variable Selection with Gamma GLM"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load data
+
+```{r}
+testing <- read.csv("Testing Data.csv",header=T)
+training <- read.csv("Training Data.csv",header=T)
+
+```
+
+Step 1: Construct an initial main-effects model using explanatory variables that include the known important variables and others that show any evidence of being relevant when used as sole predictors (e.g., having P-value \< 0.2).
+
+```{r}
+summary(glm(LastSalePrice ~ BuildingType,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ factor(PhysicalCondition),data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ factor(Neighborhood),data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ YearBuilt,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ FullBath,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ factor(RatingBath),data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ HalfBath,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ Kitchen,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ TotalFinishedArea,data=training,family=Gamma(link="log"))) #keep
+
+summary(glm(LastSalePrice ~ LandSF,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ AirConditioned,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ FrameShed,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ MasonAdjustment,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ MiscSfyi,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ PlasticLinedPool,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ PrefabPool,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ Canopy,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ MetalShed,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ DivingBoard,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ PoolLadder,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ ReinforcedConcreteSF,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ GreenHouse,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ FiberglassPool,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ PoolLighting,data=training,family=Gamma(link="log"))) 
+############DROP
+
+summary(glm(LastSalePrice ~ FrameGarage.1,data=training,family=Gamma(link="log"))) 
+###########DROP
+
+summary(glm(LastSalePrice ~ AsphaltPaving,data=training,family=Gamma(link="log"))) 
+##########DROP
+
+summary(glm(LastSalePrice ~ Valuation2021,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ XCoordinate,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ YCoordinate,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ factor(NeighborhoodCluster),data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ QualityC,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ PrimaryWallC,data=training,family=Gamma(link="log"))) 
+#keep
+
+summary(glm(LastSalePrice ~ Parking,data=training,family=Gamma(link="log"))) 
+#keep
+
+```
+
+Test model that results from just keeping the variables that are significant in step 1
+
+```{r}
+step1_model <- glm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + Valuation2021 + XCoordinate + YCoordinate + factor(NeighborhoodCluster) + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+mean((predict(step1_model,newdata=testing,type="response") - testing$LastSalePrice)**2) #2,420,246,419
+
+mean(((predict(step1_model,newdata=testing,type="response") - testing$LastSalePrice)/testing$LastSalePrice)) #just over 11% off for each house
+
+#assessment sales ratio
+mean((testing$LastSalePrice/predict(step1_model,newdata=testing,type="response"))) #0.989
+```
+
+Trying a linear model
+
+```{r}
+linear_model <- lm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + Valuation2021 + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training)
+
+mean((predict(linear_model,newdata = testing) - testing$LastSalePrice)**2) #2,017,051,097
+
+mean(((predict(linear_model,newdata=testing) - testing$LastSalePrice)/testing$LastSalePrice)) #we are just over 10% off on average for each house
+
+#assessment sales ratio
+mean((testing$LastSalePrice/predict(linear_model,newdata=testing))) #0.99
+```
