@@ -144,4 +144,10 @@ mean(((predict(linear_model,newdata=testing) - testing$LastSalePrice)/testing$La
 
 #assessment sales ratio
 mean((testing$LastSalePrice/predict(linear_model,newdata=testing))) #0.99
+
+#remove valuation2021
+linear_model_2 <- lm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training)
+
+#assessment sales ratio
+mean((testing$LastSalePrice/predict(linear_model_2,newdata=testing))) #1.02 
 ```
