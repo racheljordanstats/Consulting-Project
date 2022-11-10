@@ -123,7 +123,7 @@ summary(glm(LastSalePrice ~ Parking,data=training,family=Gamma(link="log")))
 Test model that results from just keeping the variables that are significant in step 1
 
 ```{r}
-step1_model <- glm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + Valuation2021 + XCoordinate + YCoordinate + factor(NeighborhoodCluster) + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+step1_model <- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + Valuation2021 + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
 
 mean((predict(step1_model,newdata=testing,type="response") - testing$LastSalePrice)**2) #2,420,246,419
 
@@ -131,6 +131,14 @@ mean(((predict(step1_model,newdata=testing,type="response") - testing$LastSalePr
 
 #assessment sales ratio
 mean((testing$LastSalePrice/predict(step1_model,newdata=testing,type="response"))) #0.989
+
+#remove neighborhood or neighborhoood cluster because they make it rank-deficient and "misleading". using neighborhoodcluster results in a slightly worse model in terms of both sales ratio and COD so use neighborhood
+
+#coefficient of dispersion
+sales_ratios_glm <- testing$LastSalePrice/predict(step1_model,newdata=testing,type="response")
+require(stats)
+median_glm <- median(sales_ratios_glm)
+mean((sales_ratios_glm-median_glm)/median_glm) #0.0347 < 0.15
 ```
 
 Trying a linear model
@@ -145,9 +153,19 @@ mean(((predict(linear_model,newdata=testing) - testing$LastSalePrice)/testing$La
 #assessment sales ratio
 mean((testing$LastSalePrice/predict(linear_model,newdata=testing))) #0.99
 
+#coefficient of dispersion
+sales_ratios_lm <- testing$LastSalePrice/predict(linear_model,newdata=testing)
+median_lm <- median(sales_ratios_lm)
+mean((sales_ratios_lm-median_lm)/median_lm) #0.0417 > 0.15
+
 #remove valuation2021
 linear_model_2 <- lm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training)
 
 #assessment sales ratio
 mean((testing$LastSalePrice/predict(linear_model_2,newdata=testing))) #1.02 
+
+#coefficient of dispersion
+sales_ratios_lm_2 <- testing$LastSalePrice/predict(linear_model_2,newdata=testing)
+median_lm_2 <- median(sales_ratios_lm_2)
+mean((sales_ratios_lm_2-median_lm_2)/median_lm_2) #0.0634 < 0.15
 ```
