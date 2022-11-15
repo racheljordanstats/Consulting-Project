@@ -130,15 +130,17 @@ mean((predict(step1_model,newdata=testing,type="response") - testing$LastSalePri
 mean(((predict(step1_model,newdata=testing,type="response") - testing$LastSalePrice)/testing$LastSalePrice)) #just over 11% off for each house
 
 #assessment sales ratio
+require(stats)
 median((predict(step1_model,newdata=testing,type="response")/testing$LastSalePrice)) #1.05
 
 #remove neighborhood or neighborhoood cluster because they make it rank-deficient and "misleading". using neighborhoodcluster results in a slightly worse model in terms of both sales ratio and COD so use neighborhood
 
 #coefficient of dispersion
 sales_ratios_glm <- predict(step1_model,newdata=testing,type="response")/testing$LastSalePrice
-require(stats)
 median_glm <- median(sales_ratios_glm)
 mean((sales_ratios_glm-median_glm)/median_glm) #0.062 < 0.15
+
+
 ```
 
 Trying a linear model
@@ -159,6 +161,476 @@ median_lm <- median(sales_ratios_lm)
 mean((sales_ratios_lm-median_lm)/median_lm) #0.05 > 0.15
 
 #remove valuation2021
+linear_model_2 <- lm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training)
+
+#assessment sales ratio
+median((predict(linear_model_2,newdata=testing)/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_lm_2 <- predict(linear_model_2,newdata=testing)/testing$LastSalePrice
+median_lm_2 <- median(sales_ratios_lm_2)
+mean((sales_ratios_lm_2-median_lm_2)/median_lm_2) #0.053 < 0.15
+
+```
+
+Step 2: Conduct backward elimination, keeping a variable if it is either significant at a somewhat more stringent level or shows evidence of being a relevant confounder, in the sense that the estimated effect of a key variable changes substantially when it is removed.
+
+```{r}
+#continue with step 2 of purposeful variable selection
+
+step2_model_1<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+#remove valuation2021 because Colin said that valuations are red herrings
+
+#assessment sales ratio
+median((predict(step2_model_1,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_2 <- predict(step2_model_1,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_2 <- median(sales_ratios_glm_2)
+mean((sales_ratios_glm_2-median_glm_2)/median_glm_2) #0.067 < 0.15
+
+#decide which variable to remove
+summary(step2_model_1) #drop YCoordinate - p-value 0.948
+
+step2_model_2<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_2,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_3 <- predict(step2_model_2,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_3 <- median(sales_ratios_glm_3)
+mean((sales_ratios_glm_3-median_glm_3)/median_glm_3) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_2) #drop reinforcedconcreteSF - p-value 0.947
+
+step2_model_3<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_3,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_4 <- predict(step2_model_3,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_4 <- median(sales_ratios_glm_4)
+mean((sales_ratios_glm_4-median_glm_4)/median_glm_4) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_3) #drop plasticlinepool - p-value 0.899
+
+step2_model_4<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_4,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_5 <- predict(step2_model_2,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_5 <- median(sales_ratios_glm_5)
+mean((sales_ratios_glm_5-median_glm_5)/median_glm_5) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_4) #drop reinforcedconcreteSF - p-value 0.95
+
+step2_model_5<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + DivingBoard + PoolLadder + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_5,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_6 <- predict(step2_model_5,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_6 <- median(sales_ratios_glm_6)
+mean((sales_ratios_glm_6-median_glm_6)/median_glm_6) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_5) #drop frameshed - p-value 0.89
+
+step2_model_6<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + MasonAdjustment + DivingBoard + PoolLadder + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_6,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_7 <- predict(step2_model_6,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_7 <- median(sales_ratios_glm_7)
+mean((sales_ratios_glm_7-median_glm_7)/median_glm_7) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_6) #drop divingboard - p-value 0.822
+
+step2_model_7<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + MasonAdjustment + PoolLadder + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_7,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_8 <- predict(step2_model_7,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_8 <- median(sales_ratios_glm_8)
+mean((sales_ratios_glm_8-median_glm_8)/median_glm_8) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_7) #drop poolladder - p-value 0.83
+
+step2_model_8<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + MasonAdjustment + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_8,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_9 <- predict(step2_model_8,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_9 <- median(sales_ratios_glm_9)
+mean((sales_ratios_glm_9-median_glm_9)/median_glm_9) #0.067 < 0.15
+
+#metrics did not change much
+
+#decide which variable to remove
+summary(step2_model_8) #drop masonadjustment - p-value 0.20
+
+step2_model_9<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_10 <- predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_10 <- median(sales_ratios_glm_10)
+mean((sales_ratios_glm_10-median_glm_10)/median_glm_10) #0.066 < 0.15
+
+#metrics did not change much - improved VERY slightly?
+
+#decide which variable to remove
+summary(step2_model_9) #drop qualityc - best p-value 0.079
+
+step2_model_10<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_10,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_11 <- predict(step2_model_10,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_11 <- median(sales_ratios_glm_11)
+mean((sales_ratios_glm_11-median_glm_11)/median_glm_11) #0.067 < 0.15
+
+#metrics did not change much - got SLIGHTLY worse than previous model
+
+#decide which variable to remove
+summary(step2_model_10) #everything in the model is significant now. I'm going to revert to the model with qualityc because the metrics were SLIGHTLY better. 
+```
+
+Step 3: Add to the model any variables that were not included in step 1 but that are significant when adjusting for the variables in the model after step 2, since a variable may not be significantly associated with y but may make an important contribution in the presence of other variables.
+
+```{r}
+#the best model from previous step
+step2_model_9<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_10 <- predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_10 <- median(sales_ratios_glm_10)
+mean((sales_ratios_glm_10-median_glm_10)/median_glm_10) #0.066 < 0.15
+
+#variables removed were MiscSFyi PrefabPool Canopy MetalShed GreenHouse FiberglassPool PoolLighting FrameGarage.1 AsphaltPaving
+
+#add back MiscSfyi
+step3_model_1<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + MiscSfyi,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_1,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_12 <- predict(step3_model_1,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_12 <- median(sales_ratios_glm_12)
+mean((sales_ratios_glm_12-median_glm_12)/median_glm_12) #0.067 < 0.15
+
+summary(step3_model_1) #not significant and does not improve metrics
+
+#add back PrefabPool
+step3_model_2<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + PrefabPool,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_2,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_13 <- predict(step3_model_2,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_13 <- median(sales_ratios_glm_13)
+mean((sales_ratios_glm_13-median_glm_13)/median_glm_13) #0.067 < 0.15
+
+summary(step3_model_2) #not significant and does not improve metrics
+
+#add back Canopy
+step3_model_3<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + Canopy,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_3,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_14 <- predict(step3_model_3,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_14 <- median(sales_ratios_glm_14)
+mean((sales_ratios_glm_14-median_glm_14)/median_glm_14) #0.067 < 0.15
+
+summary(step3_model_3) #not significant and does not improve metrics
+
+#add back MetalShed
+step3_model_4<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + MetalShed,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_4,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_15 <- predict(step3_model_4,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_15 <- median(sales_ratios_glm_15)
+mean((sales_ratios_glm_15-median_glm_15)/median_glm_15) #0.067 < 0.15
+
+summary(step3_model_4) #not significant and does not improve metrics
+
+#add back GreenHouse
+step3_model_5<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + GreenHouse,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_5,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_16 <- predict(step3_model_5,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_16 <- median(sales_ratios_glm_16)
+mean((sales_ratios_glm_16-median_glm_16)/median_glm_16) #0.066 < 0.15
+
+summary(step3_model_5) #not significant and does not improve metrics
+
+#add back FiberglassPool
+step3_model_6<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FiberglassPool,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_6,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_17 <- predict(step3_model_6,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_17 <- median(sales_ratios_glm_17)
+mean((sales_ratios_glm_17-median_glm_17)/median_glm_17) #0.067 < 0.15
+
+summary(step3_model_6) #not significant and does not improve metrics
+
+#add back PoolLighting
+step3_model_7<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + PoolLighting,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_7,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_18 <- predict(step3_model_7,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_18 <- median(sales_ratios_glm_18)
+mean((sales_ratios_glm_18-median_glm_18)/median_glm_18) #0.066 < 0.15
+
+summary(step3_model_7) #not significant and does not improve metrics
+
+#add back FrameGarage.1
+step3_model_8<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FrameGarage.1,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_8,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_19 <- predict(step3_model_8,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_19 <- median(sales_ratios_glm_19)
+mean((sales_ratios_glm_19-median_glm_19)/median_glm_19) #0.067 < 0.15
+
+summary(step3_model_8) #not significant and does not improve metrics
+
+#add back AsphaltPaving
+step3_model_9<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + AsphaltPaving,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step3_model_9,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_20 <- predict(step3_model_9,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_20 <- median(sales_ratios_glm_20)
+mean((sales_ratios_glm_20-median_glm_20)/median_glm_20) #0.066 < 0.15
+
+summary(step3_model_9) #not significant and does not improve metrics
+```
+
+Step 4: Check for plausible interactions among variables in the model after step 3, using significance tests at conventional levels such as 0.05.
+
+```{r}
+#the best model from previous step
+step2_model_9<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking,data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_10 <- predict(step2_model_9,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_10 <- median(sales_ratios_glm_10)
+mean((sales_ratios_glm_10-median_glm_10)/median_glm_10) #0.066 < 0.15
+
+#check PhysicalCondition*Neighborhood
+step4_model_1<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + factor(PhysicalCondition)*factor(Neighborhood), data=training,family=Gamma(link="log"))
+#this gave a warning about rank-deficient-fit 
+
+#assessment sales ratio
+median((predict(step4_model_1,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_21 <- predict(step4_model_1,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_21 <- median(sales_ratios_glm_21)
+mean((sales_ratios_glm_21-median_glm_21)/median_glm_21) #Inf
+
+#check FullBath*TotalFinishedArea
+step4_model_2<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step4_model_2,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_22 <- predict(step4_model_2,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_22 <- median(sales_ratios_glm_22)
+mean((sales_ratios_glm_22-median_glm_22)/median_glm_22) #0.064 < 0.15
+
+summary(step4_model_2) #the interaction is significant and slightly improves the model
+
+#add HalfBath*TotalFinishedArea
+step4_model_3<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step4_model_3,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_23 <- predict(step4_model_3,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_23 <- median(sales_ratios_glm_23)
+mean((sales_ratios_glm_23-median_glm_23)/median_glm_23) #0.064 < 0.15
+
+summary(step4_model_3) #the interaction is significant and slightly improves the model
+
+#add LandSF*TotalFinishedArea
+step4_model_4<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea + LandSF*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step4_model_4,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_24 <- predict(step4_model_4,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_24 <- median(sales_ratios_glm_24)
+mean((sales_ratios_glm_24-median_glm_24)/median_glm_24) #0.064 < 0.15
+
+summary(step4_model_4) #the interaction is not significant and doesn't really improve the model
+
+#add AirConditioned*factor(Neighborhood)
+step4_model_5<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea + AirConditioned*factor(Neighborhood), data=training,family=Gamma(link="log"))
+#rank-deficient fit warning
+
+#assessment sales ratio
+median((predict(step4_model_5,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_25 <- predict(step4_model_5,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_25 <- median(sales_ratios_glm_25)
+mean((sales_ratios_glm_25-median_glm_25)/median_glm_25) #0.064 < 0.15
+
+summary(step4_model_5) #the interaction is not significant and doesn't really improve the model
+
+#add YearBuilt*TotalFinishedArea
+step4_model_6<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea + YearBuilt*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step4_model_6,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_26 <- predict(step4_model_6,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_26 <- median(sales_ratios_glm_26)
+mean((sales_ratios_glm_26-median_glm_26)/median_glm_26) #0.065 < 0.15
+
+summary(step4_model_6) #the interaction is not significant and doesn't really improve the model
+```
+
+Best model so far
+
+```{r}
+#best model
+step4_model_3<- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(step4_model_3,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_23 <- predict(step4_model_3,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_23 <- median(sales_ratios_glm_23)
+mean((sales_ratios_glm_23-median_glm_23)/median_glm_23) #0.064 < 0.15
+
+#try square root transformation on YearBuilt suggested by client
+best_model_tr <- glm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + sqrt(YearBuilt) + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea, data=training,family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(best_model_tr,newdata=testing,type="response")/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_glm_27 <- predict(best_model_tr,newdata=testing,type="response")/testing$LastSalePrice
+median_glm_27 <- median(sales_ratios_glm_27)
+mean((sales_ratios_glm_27-median_glm_27)/median_glm_27) #0.064 < 0.15
+#didn't really do much
+
+#wait for client to suggest other plausible interaction terms
+```
+
+Is that model better than bestGLM?
+
+```{r}
+#rerun bestglm because I think this is an old one
+#assessment sales ratio for bestglm
+median((predict(bestglm_model$BestModel,newdata=best_glm_testing,type="response")/testing$LastSalePrice)) #1.05
+
+#coefficient of dispersion for bestglm
+sales_ratios_bestglm <- predict(bestglm_model$BestModel,newdata=best_glm_testing,type="response")/testing$LastSalePrice
+median_bestglm <- median(sales_ratios_bestglm)
+mean((sales_ratios_bestglm-median_bestglm)/median_bestglm) #0.088 < 0.15
+
+summary(bestglm_model$BestModel)
+
+#try the bestglm model with neighborhood instead of neighborhood cluster
+best_glm_neighb <- glm(LastSalePrice ~ factor(PhysicalCondition) + YearBuilt + HalfBath + TotalFinishedArea + LandSF + AirConditioned + factor(Neighborhood) + factor(QualityC) + PrimaryWallC + Parking, data= training, family=Gamma(link="log"))
+
+#assessment sales ratio
+median((predict(best_glm_neighb,newdata=testing,type="response")/testing$LastSalePrice)) #1.05
+
+#coefficient of dispersion for bestglm
+sales_ratios_bestglm_2<- predict(best_glm_neighb,newdata=best_glm_testing,type="response")/testing$LastSalePrice
+median_bestglm_2 <- median(sales_ratios_bestglm_2)
+mean((sales_ratios_bestglm_2-median_bestglm_2)/median_bestglm_2) #0.068 < 0.15
+
+#still not better than what we found with purposeful variable selection
+```
+
+Compare and tinker with best linear model
+
+```{r}
+#try your best GLM result as a linear model
+linear_model_3 <- lm(LastSalePrice ~ factor(PhysicalCondition)  + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + XCoordinate + QualityC + PrimaryWallC + Parking + FullBath*TotalFinishedArea + HalfBath*TotalFinishedArea, data=training)
+
+#assessment sales ratio
+median((predict(linear_model_3,newdata=testing)/testing$LastSalePrice)) #1.04
+
+#coefficient of dispersion
+sales_ratios_lm_3 <- predict(linear_model_3,newdata=testing)/testing$LastSalePrice
+median_lm_3 <- median(sales_ratios_lm_3)
+mean((sales_ratios_lm_3-median_lm_3)/median_lm_3) #0.054 < 0.15
+```
+
+Initial linear model is the best.
+
+```{r}
+#best model
 linear_model_2 <- lm(LastSalePrice ~ factor(PhysicalCondition) + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + AirConditioned + FrameShed + MasonAdjustment + PlasticLinedPool + DivingBoard + PoolLadder + ReinforcedConcreteSF + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training)
 
 #assessment sales ratio
