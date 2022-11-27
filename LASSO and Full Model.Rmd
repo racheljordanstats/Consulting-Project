@@ -1,0 +1,65 @@
+---
+title: "LASSO and Full Model"
+author: "Rachel Jordan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Full Model
+
+```{r}
+#drop that weird x variable that appeared when creating the training/testing set, and drop valuations because they are red herrings. remove building type as determined when creating test and train sets
+require(tidyverse)
+training_full_model <- training %>% 
+  select(-c(X,Valuation2020,Valuation2019,Valuation2021,BuildingType)) 
+
+#GLM
+glm_full_model <- glm(LastSalePrice ~ PhysicalCondition + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + SeasonSold + AirConditioned + FrameShed + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + Canopy + MetalShed + DivingBoard + PoolLadder + ReinforcedConcreteSF + GreenHouse + FiberglassPool + PoolLighting + FrameGarage.1 + AsphaltPaving + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking, data = training_full_model, family = Gamma(link="log"))
+
+require(stats)
+
+#assessment sales ratio
+median((predict(glm_full_model,newdata=testing,type="response")/testing$LastSalePrice)) #1.039 -- when using neighborhoodcluster instead of neighborhood it is over 1.04
+
+#coefficient of dispersion
+sales_ratios_glm_full_model <- predict(glm_full_model,newdata=testing, type="response")/testing$LastSalePrice
+median_glm_full_model <- median(sales_ratios_glm_full_model)
+mean((sales_ratios_glm_full_model-median_glm_full_model)/median_glm_full_model) #0.071 < 15
+
+#linear model
+lm_full_model <- lm(LastSalePrice ~ PhysicalCondition + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + SeasonSold + AirConditioned + FrameShed + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + Canopy + MetalShed + DivingBoard + PoolLadder + ReinforcedConcreteSF + GreenHouse + FiberglassPool + PoolLighting + FrameGarage.1 + AsphaltPaving + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking, data = training_full_model)
+
+#assessment sales ratio
+median((predict(lm_full_model,newdata=testing)/testing$LastSalePrice)) #1.035
+
+#coefficient of dispersion
+sales_ratios_lm_full_model <- predict(lm_full_model,newdata=testing)/testing$LastSalePrice
+median_lm_full_model <- median(sales_ratios_lm_full_model)
+mean((sales_ratios_lm_full_model-median_lm_full_model)/median_lm_full_model) #0.054 < 15
+```
+
+## LASSO
+
+```{r}
+require(glmnet)
+
+x <- model.matrix(LastSalePrice ~ PhysicalCondition + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + SeasonSold + AirConditioned + FrameShed + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + Canopy + MetalShed + DivingBoard + PoolLadder + ReinforcedConcreteSF + GreenHouse + FiberglassPool + PoolLighting + FrameGarage.1 + AsphaltPaving + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking,data=training_full_model)[,-1]
+
+y <- training_full_model$LastSalePrice
+
+#get best lambda
+set.seed(1216)
+cv.out <- cv.glmnet(x, y, alpha = 1)
+bestlam <- cv.out$lambda.min
+
+#create model
+lasso_mod <- glmnet(x, y, alpha=1, lambda=bestlam)
+
+#print coefficients
+lasso_coef <- predict(lasso_mod, type = "coefficients", s= bestlam)
+round(lasso_coef,2) #none reduced to 0 except neighborhoods 2970, 4240, 4420
+```
