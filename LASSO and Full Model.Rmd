@@ -34,7 +34,7 @@ mean((sales_ratios_glm_full_model-median_glm_full_model)/median_glm_full_model) 
 lm_full_model <- lm(LastSalePrice ~ PhysicalCondition + factor(Neighborhood) + YearBuilt + FullBath + factor(RatingBath) + HalfBath + Kitchen + TotalFinishedArea + LandSF + SeasonSold + AirConditioned + FrameShed + MasonAdjustment + MiscSfyi + PlasticLinedPool + PrefabPool + Canopy + MetalShed + DivingBoard + PoolLadder + ReinforcedConcreteSF + GreenHouse + FiberglassPool + PoolLighting + FrameGarage.1 + AsphaltPaving + XCoordinate + YCoordinate + QualityC + PrimaryWallC + Parking, data = training_full_model)
 
 #assessment sales ratio
-median((predict(lm_full_model,newdata=testing)/testing$LastSalePrice)) #1.035
+median((predict(lm_full_model,newdata=testing)/testing$LastSalePrice)) #1.04
 
 #coefficient of dispersion
 sales_ratios_lm_full_model <- predict(lm_full_model,newdata=testing)/testing$LastSalePrice
