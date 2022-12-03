@@ -640,4 +640,6 @@ median((predict(linear_model_2,newdata=testing)/testing$LastSalePrice)) #1.04
 sales_ratios_lm_2 <- predict(linear_model_2,newdata=testing)/testing$LastSalePrice
 median_lm_2 <- median(sales_ratios_lm_2)
 mean((sales_ratios_lm_2-median_lm_2)/median_lm_2) #0.053 < 0.15
+
+summary(linear_model_2)
 ```
