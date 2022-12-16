@@ -1,0 +1,37 @@
+---
+title: "Separate Model Subsets"
+author: "Charles Hwang"
+date: "12/17/2022"
+output: pdf_document
+---
+
+```{r Separate Model Subsets}
+rm(list=ls())
+sales<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/Fixed Data for Modeling.csv")[,-1]
+train<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/Training Data.csv")[,-1]
+test<-read.csv("~/Desktop/Notes/Graduate/STAT 401 - Statistical Consulting/Testing Data.csv")[,-1]
+lm<-lm(LastSalePrice~factor(PhysicalCondition)+factor(Neighborhood)+YearBuilt+FullBath+factor(RatingBath)+HalfBath+Kitchen+TotalFinishedArea+LandSF+AirConditioned+FrameShed+MasonAdjustment+PlasticLinedPool+DivingBoard+PoolLadder+ReinforcedConcreteSF+XCoordinate+YCoordinate+QualityC+PrimaryWallC+Parking,data=train)
+SR<-predict(lm,test)/test$LastSalePrice
+ASR<-median(SR)   # 0.9 < 1.03931851900334 < 1.1
+COD<-mean((SR-ASR)/ASR) # 5.35693516628142 < 15
+median(SR[test$LastSalePrice<=20000])                                       # ASR = 2.428144
+mean(SR[test$LastSalePrice<=20000]/median(SR[test$LastSalePrice<=20000])-1) # COD = 53.16512
+sum(test$LastSalePrice<=20000)     # n = 18
+mean(test$LastSalePrice<=20000)    # p = 0.004578988
+median(SR[test$LastSalePrice>=250000])                                        # ASR = 0.8883501
+mean(SR[test$LastSalePrice>=250000]/median(SR[test$LastSalePrice>=250000])-1) # COD = 0.1979317
+sum(test$LastSalePrice>=250000)    # n = 603
+mean(test$LastSalePrice>=250000)   # p = 0.1533961
+median(SR[test$YearBuilt>=2017])                                  # ASR = 1.129211
+mean(SR[test$YearBuilt>=2017]/median(SR[test$YearBuilt>=2017])-1) # COD = 27.21689
+sum(test$YearBuilt>=2017)  # n = 5
+mean(test$YearBuilt>=2017) # p = 0.1271941
+median(SR[test$HalfBath>=2])                              # ASR = 1.114048
+mean(SR[test$HalfBath>=2]/median(SR[test$HalfBath>=2])-1) # COD = 4.866196
+sum(test$HalfBath>=2)  # n = 65
+mean(test$HalfBath>=2) # p = 0.01653523
+median(SR[test$TotalFinishedArea<=900])                                         # ASR = 1.15019
+mean(SR[test$TotalFinishedArea<=900]/median(SR[test$TotalFinishedArea<=900])-1) # COD = 2.085207
+sum(test$TotalFinishedArea<=900)  # n = 302
+mean(test$TotalFinishedArea<=900) # p = 0.07682524
+```
